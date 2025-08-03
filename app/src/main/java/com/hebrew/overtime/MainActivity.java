@@ -34,6 +34,7 @@ package com.hebrew.overtime;
 // 📦 IMPORTS - The Tools We Need
 import android.app.Activity;
 import android.app.DatePickerDialog;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -109,20 +110,22 @@ public class MainActivity extends Activity {
     private TextView clickCountText;
     
     /*
-        📊 APP STATE VARIABLES - v002f
-        ==============================
+        📊 APP STATE VARIABLES - v004f (DATA PERSISTENCE)
+        =================================================
         
-        🎯 PURPOSE: Track overtime data with date selection
+        🎯 PURPOSE: Track overtime data with date selection and persistence
         📱 OVERTIME TRACKING:
         - selectedDate: Date for overtime entry (YYYY-MM-DD format)
-        - clickCount: Number of overtime entries (each = 30 minutes)
+        - clickCount: Number of overtime entries (loaded from SharedPreferences)
+        - sharedPreferences: Android's built-in key-value storage for app data
         
-        💾 LIFECYCLE CONSIDERATION:
-        These variables get reset when Android destroys/recreates your Activity.
-        For persistent data, you'd use SharedPreferences, databases, or files.
+        💾 DATA PERSISTENCE - v004f:
+        SharedPreferences automatically saves data between app sessions.
+        Data survives app restarts, device reboots, and memory management.
     */
     private String selectedDate = "2025-08-03";  // Today's date (default)
     private int clickCount = 0;
+    private SharedPreferences sharedPreferences;  // v004f: Data persistence
     
     /*
         🏗️ onCreate() - THE BIRTH OF YOUR ACTIVITY
@@ -162,7 +165,13 @@ public class MainActivity extends Activity {
         
         // 📱 PROFESSIONAL LOGGING: Track when Activity is created
         Log.d(TAG, "🏗️ onCreate() called - Activity is being created!");
-        Log.d(TAG, "📊 Initial click count: " + clickCount);
+        
+        // 💾 v004f: Initialize SharedPreferences for data persistence
+        sharedPreferences = getSharedPreferences("HebrewOvertimeData", MODE_PRIVATE);
+        
+        // Load saved click count from previous sessions
+        clickCount = sharedPreferences.getInt("clickCount", 0);
+        Log.d(TAG, "📊 Loaded click count from storage: " + clickCount);
         
         /*
             🎨 CREATE UI PROGRAMMATICALLY
@@ -337,6 +346,9 @@ public class MainActivity extends Activity {
             // Add entry and increment counter
             clickCount++;
             
+            // v004f: Save overtime entry to SharedPreferences
+            saveOvertimeEntry(selectedDate, hours, minutes);
+            
             Log.d(TAG, "🕐 Added overtime: " + hours + "h " + minutes + "m (entry #" + clickCount + ")");
             
             // Clear input fields after successful entry
@@ -452,6 +464,44 @@ public class MainActivity extends Activity {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         
         Log.d(TAG, "💬 Showed Hebrew overtime message: " + message);
+    }
+    
+    /*
+        💾 DATA PERSISTENCE METHOD - v004f
+        ==================================
+        
+        🎯 PURPOSE: Save overtime entry to SharedPreferences
+        
+        🧠 HOW IT WORKS:
+        - Creates unique key for each date-entry combination
+        - Stores hours, minutes, and timestamp
+        - Updates total click count
+        - All data persists between app sessions
+        
+        📱 DATA FORMAT:
+        - Key: "entry_YYYY-MM-DD_N" (N = entry number for that date)
+        - Value: "hours:minutes:timestamp"
+        - Counter: "clickCount" = total entries
+    */
+    private void saveOvertimeEntry(String date, int hours, int minutes) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        
+        // Create unique key for this entry
+        String entryKey = "entry_" + date + "_" + clickCount;
+        
+        // Create entry data (hours:minutes:timestamp)
+        String entryData = hours + ":" + minutes + ":" + System.currentTimeMillis();
+        
+        // Save entry data
+        editor.putString(entryKey, entryData);
+        
+        // Update total click count
+        editor.putInt("clickCount", clickCount);
+        
+        // Commit changes to storage
+        editor.apply();
+        
+        Log.d(TAG, "💾 Saved overtime entry: " + entryKey + " = " + entryData);
     }
     
     /*
