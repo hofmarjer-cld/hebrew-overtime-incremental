@@ -111,22 +111,51 @@ public class MainActivity extends Activity {
     private TextView historyText;     // v005f: History display
     
     /*
-        📊 APP STATE VARIABLES - v004f (DATA PERSISTENCE)
-        =================================================
+        📊 APP STATE VARIABLES - v007f (ISRAELI CALENDAR INTEGRATION)
+        =============================================================
         
-        🎯 PURPOSE: Track overtime data with date selection and persistence
+        🎯 PURPOSE: Track overtime data with Israeli calendar awareness
         📱 OVERTIME TRACKING:
         - selectedDate: Date for overtime entry (YYYY-MM-DD format)
         - clickCount: Number of overtime entries (loaded from SharedPreferences)
         - sharedPreferences: Android's built-in key-value storage for app data
+        - israeliHolidays2025: Israeli holidays for accurate work days calculation
         
         💾 DATA PERSISTENCE - v004f:
         SharedPreferences automatically saves data between app sessions.
-        Data survives app restarts, device reboots, and memory management.
+        
+        🇮🇱 ISRAELI CALENDAR - v007f:
+        Comprehensive Israeli holiday support for accurate business calculations.
+        This ensures work days calculation respects Israeli public holidays.
     */
     private String selectedDate = "2025-08-03";  // Today's date (default)
     private int clickCount = 0;
     private SharedPreferences sharedPreferences;  // v004f: Data persistence
+    
+    // v007f: Israeli holidays for 2025 (comprehensive list)
+    private final java.util.Map<String, String> israeliHolidays2025 = new java.util.HashMap<String, String>() {{
+        // Major holidays
+        put("2025-01-01", "New Year's Day");
+        put("2025-04-13", "Passover Eve");
+        put("2025-04-14", "Passover");
+        put("2025-04-15", "Passover");
+        put("2025-04-20", "Last Day of Passover");
+        put("2025-05-01", "Labor Day");
+        put("2025-05-14", "Independence Day");
+        put("2025-06-02", "Shavuot Eve");
+        put("2025-06-03", "Shavuot");
+        put("2025-09-15", "Rosh Hashanah Eve");
+        put("2025-09-16", "Rosh Hashanah");
+        put("2025-09-17", "Rosh Hashanah");
+        put("2025-09-24", "Yom Kippur Eve");
+        put("2025-09-25", "Yom Kippur");
+        put("2025-09-29", "Sukkot Eve");
+        put("2025-09-30", "Sukkot");
+        put("2025-10-06", "Simchat Torah");
+        // Fast days (typically work days but some companies observe)
+        put("2025-07-27", "Fast of Tammuz");
+        put("2025-08-14", "Tisha B'Av");
+    }};
     
     /*
         🏗️ onCreate() - THE BIRTH OF YOUR ACTIVITY
@@ -439,11 +468,18 @@ public class MainActivity extends Activity {
         float balance = actualHours - requiredHours;
         float completionPercentage = requiredHours > 0 ? (actualHours / requiredHours) * 100 : 0;
         
-        // Format monthly summary in Hebrew
+        // v007f: Get holiday information for this month
+        int holidaysInMonth = countHolidaysInMonth(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH));
+        
+        // Format monthly summary in Hebrew with Israeli calendar awareness
         String monthName = getHebrewMonthName(cal.get(java.util.Calendar.MONTH));
         StringBuilder summaryBuilder = new StringBuilder();
         summaryBuilder.append("📊 ").append(monthName).append(" ").append(cal.get(java.util.Calendar.YEAR)).append("\n");
-        summaryBuilder.append("ימי עבודה: ").append(workDays).append("\n");
+        summaryBuilder.append("ימי עבודה: ").append(workDays);
+        if (holidaysInMonth > 0) {
+            summaryBuilder.append(" (חגים: ").append(holidaysInMonth).append(")");
+        }
+        summaryBuilder.append("\n");
         summaryBuilder.append("שעות נדרשות: ").append(String.format("%.1f", requiredHours)).append("\n");
         summaryBuilder.append("שעות בפועל: ").append(String.format("%.1f", actualHours)).append("\n");
         summaryBuilder.append("יתרה: ").append(String.format("%.1f", balance));
@@ -453,6 +489,11 @@ public class MainActivity extends Activity {
             summaryBuilder.append(" ❌");
         }
         summaryBuilder.append("\nהשלמה: ").append(String.format("%.0f%%", completionPercentage));
+        
+        // v007f: Show if selected date is a holiday
+        if (isIsraeliHoliday(selectedDate)) {
+            summaryBuilder.append("\n🎄 ").append(selectedDate).append(": ").append(getHolidayName(selectedDate));
+        }
         
         clickCountText.setText(summaryBuilder.toString());
         
@@ -622,17 +663,29 @@ public class MainActivity extends Activity {
         int daysInMonth = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH);
         
         int workDays = 0;
+        int holidaysExcluded = 0;
+        
         for (int day = 1; day <= daysInMonth; day++) {
             cal.set(year, month, day);
             int dayOfWeek = cal.get(java.util.Calendar.DAY_OF_WEEK);
             
-            // Count Monday-Thursday as work days (Israeli work week)
+            // Check if it's a potential work day (Monday-Thursday)
             if (dayOfWeek >= java.util.Calendar.MONDAY && dayOfWeek <= java.util.Calendar.THURSDAY) {
-                workDays++;
+                // v007f: Check if it's an Israeli holiday
+                String dateStr = String.format("%04d-%02d-%02d", year, month + 1, day);
+                
+                if (israeliHolidays2025.containsKey(dateStr)) {
+                    // It's a holiday - don't count as work day
+                    holidaysExcluded++;
+                    Log.d(TAG, "🎄 Holiday excluded: " + dateStr + " - " + israeliHolidays2025.get(dateStr));
+                } else {
+                    // Regular work day
+                    workDays++;
+                }
             }
         }
         
-        Log.d(TAG, "📅 Calculated work days for " + year + "/" + (month+1) + ": " + workDays);
+        Log.d(TAG, "📅 Work days for " + year + "/" + (month+1) + ": " + workDays + " (excluded " + holidaysExcluded + " holidays)");
         return workDays;
     }
     
@@ -670,6 +723,40 @@ public class MainActivity extends Activity {
             "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"
         };
         return hebrewMonths[month];
+    }
+    
+    /*
+        🇮🇱 ISRAELI HOLIDAY HELPER METHODS - v007f
+        ===========================================
+        
+        🎯 PURPOSE: Israeli calendar integration utilities
+        
+        These methods provide Israeli holiday detection and related
+        functionality for accurate work days calculation.
+    */
+    
+    private boolean isIsraeliHoliday(String dateStr) {
+        return israeliHolidays2025.containsKey(dateStr);
+    }
+    
+    private String getHolidayName(String dateStr) {
+        return israeliHolidays2025.get(dateStr);
+    }
+    
+    private int countHolidaysInMonth(int year, int month) {
+        int holidays = 0;
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(year, month, 1);
+        int daysInMonth = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH);
+        
+        for (int day = 1; day <= daysInMonth; day++) {
+            String dateStr = String.format("%04d-%02d-%02d", year, month + 1, day);
+            if (isIsraeliHoliday(dateStr)) {
+                holidays++;
+            }
+        }
+        
+        return holidays;
     }
     
     /*
