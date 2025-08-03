@@ -428,14 +428,38 @@ public class MainActivity extends Activity {
         - Follows DRY (Don't Repeat Yourself) principle
     */
     private void updateClickCountDisplay() {
-        // v005f: Display overtime with selected date and entry count
-        String countMessage = selectedDate + "\nסה\"כ רשומות: " + clickCount + "\n(הזן שעות ודקות למעלה)";
-        clickCountText.setText(countMessage);
+        // v006f: Display monthly statistics and summary calculations
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(2025, 7, 3); // August 2025 (month is 0-based)
+        
+        // Calculate monthly statistics
+        int workDays = calculateWorkDaysInMonth(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH));
+        float requiredHours = workDays * 1.0f; // 1 hour per work day
+        float actualHours = calculateActualHoursForMonth(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH));
+        float balance = actualHours - requiredHours;
+        float completionPercentage = requiredHours > 0 ? (actualHours / requiredHours) * 100 : 0;
+        
+        // Format monthly summary in Hebrew
+        String monthName = getHebrewMonthName(cal.get(java.util.Calendar.MONTH));
+        StringBuilder summaryBuilder = new StringBuilder();
+        summaryBuilder.append("📊 ").append(monthName).append(" ").append(cal.get(java.util.Calendar.YEAR)).append("\n");
+        summaryBuilder.append("ימי עבודה: ").append(workDays).append("\n");
+        summaryBuilder.append("שעות נדרשות: ").append(String.format("%.1f", requiredHours)).append("\n");
+        summaryBuilder.append("שעות בפועל: ").append(String.format("%.1f", actualHours)).append("\n");
+        summaryBuilder.append("יתרה: ").append(String.format("%.1f", balance));
+        if (balance >= 0) {
+            summaryBuilder.append(" ✅");
+        } else {
+            summaryBuilder.append(" ❌");
+        }
+        summaryBuilder.append("\nהשלמה: ").append(String.format("%.0f%%", completionPercentage));
+        
+        clickCountText.setText(summaryBuilder.toString());
         
         // v005f: Update history display for selected date
         updateHistoryDisplay();
         
-        Log.d(TAG, "🔄 Overtime display updated: " + selectedDate + " - " + clickCount + " entries");
+        Log.d(TAG, "🔄 Monthly summary updated: " + workDays + " work days, " + actualHours + "h actual, " + balance + "h balance");
     }
     
     /*
@@ -576,6 +600,76 @@ public class MainActivity extends Activity {
         
         historyText.setText(historyBuilder.toString());
         Log.d(TAG, "📊 Updated history display for " + selectedDate + " - " + dateEntries.size() + " entries");
+    }
+    
+    /*
+        📊 MONTHLY CALCULATIONS METHODS - v006f
+        =======================================
+        
+        🎯 PURPOSE: Core business logic for overtime tracking
+        
+        These methods implement the key calculations that make this a real
+        overtime tracker, following the original overtime tracker logic:
+        - Work days calculation (excluding weekends)
+        - Required hours (work days × 1 hour)
+        - Actual hours (sum of saved entries)
+        - Balance and completion percentage
+    */
+    
+    private int calculateWorkDaysInMonth(int year, int month) {
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(year, month, 1);
+        int daysInMonth = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH);
+        
+        int workDays = 0;
+        for (int day = 1; day <= daysInMonth; day++) {
+            cal.set(year, month, day);
+            int dayOfWeek = cal.get(java.util.Calendar.DAY_OF_WEEK);
+            
+            // Count Monday-Thursday as work days (Israeli work week)
+            if (dayOfWeek >= java.util.Calendar.MONDAY && dayOfWeek <= java.util.Calendar.THURSDAY) {
+                workDays++;
+            }
+        }
+        
+        Log.d(TAG, "📅 Calculated work days for " + year + "/" + (month+1) + ": " + workDays);
+        return workDays;
+    }
+    
+    private float calculateActualHoursForMonth(int year, int month) {
+        // Get all saved entries for this month
+        java.util.Map<String, ?> allEntries = sharedPreferences.getAll();
+        float totalHours = 0.0f;
+        
+        String monthPrefix = String.format("%04d-%02d", year, month + 1);
+        
+        for (java.util.Map.Entry<String, ?> entry : allEntries.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith("entry_") && key.contains(monthPrefix)) {
+                String value = (String) entry.getValue();
+                String[] parts = value.split(":");
+                if (parts.length >= 2) {
+                    try {
+                        int hours = Integer.parseInt(parts[0]);
+                        int minutes = Integer.parseInt(parts[1]);
+                        totalHours += hours + (minutes / 60.0f);
+                    } catch (NumberFormatException e) {
+                        Log.w(TAG, "Failed to parse entry: " + key);
+                    }
+                }
+            }
+        }
+        
+        Log.d(TAG, "💰 Calculated actual hours for " + year + "/" + (month+1) + ": " + totalHours);
+        return totalHours;
+    }
+    
+    private String getHebrewMonthName(int month) {
+        String[] hebrewMonths = {
+            "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
+            "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"
+        };
+        return hebrewMonths[month];
     }
     
     /*
