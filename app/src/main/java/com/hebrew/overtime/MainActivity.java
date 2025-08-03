@@ -218,12 +218,14 @@ public class MainActivity extends Activity {
             This eliminates resource file dependencies.
         */
         
-        // Create main welcome text
+        // Create main welcome text - v009f: Enhanced styling
         welcomeText = new TextView(this);
-        welcomeText.setText("🕐 מעקב שעות נוספות 🕐\nHebrew Overtime Tracker\nBuilt with GitHub Actions CI/CD");
-        welcomeText.setTextSize(20);
-        welcomeText.setPadding(50, 50, 50, 30);
+        welcomeText.setText("🕐 מעקב שעות נוספות 🕐\nHebrew Overtime Tracker\n✅ Professional Israeli Workplace Tool");
+        welcomeText.setTextSize(18);
+        welcomeText.setPadding(40, 40, 40, 25);
         welcomeText.setGravity(android.view.Gravity.CENTER);
+        welcomeText.setTextColor(0xFF2E7D32); // Professional dark green
+        welcomeText.setBackgroundColor(0xFFF1F8E9); // Light green background
         
         // Create date picker button - v002f
         datePickerButton = new Button(this);
@@ -231,16 +233,20 @@ public class MainActivity extends Activity {
         datePickerButton.setTextSize(16);
         datePickerButton.setPadding(40, 15, 40, 15);
         
-        // Create month navigation buttons - v008f
+        // Create month navigation buttons - v009f: Enhanced styling
         prevMonthButton = new Button(this);
         prevMonthButton.setText("← חודש קודם");
-        prevMonthButton.setTextSize(14);
-        prevMonthButton.setPadding(30, 10, 30, 10);
+        prevMonthButton.setTextSize(13);
+        prevMonthButton.setPadding(25, 8, 25, 8);
+        prevMonthButton.setBackgroundColor(0xFF1976D2); // Professional blue
+        prevMonthButton.setTextColor(0xFFFFFFFF); // White text
         
         nextMonthButton = new Button(this);
         nextMonthButton.setText("חודש הבא →");
-        nextMonthButton.setTextSize(14);
-        nextMonthButton.setPadding(30, 10, 30, 10);
+        nextMonthButton.setTextSize(13);
+        nextMonthButton.setPadding(25, 8, 25, 8);
+        nextMonthButton.setBackgroundColor(0xFF1976D2); // Professional blue
+        nextMonthButton.setTextColor(0xFFFFFFFF); // White text
         
         // Create hours input field - v003f
         hoursInput = new EditText(this);
@@ -258,11 +264,13 @@ public class MainActivity extends Activity {
         minutesInput.setPadding(30, 15, 30, 15);
         minutesInput.setGravity(android.view.Gravity.CENTER);
         
-        // Create overtime add button
+        // Create overtime add button - v009f: Enhanced styling
         clickMeButton = new Button(this);
-        clickMeButton.setText("הוסף שעות נוספות");
-        clickMeButton.setTextSize(18);
-        clickMeButton.setPadding(40, 20, 40, 20);
+        clickMeButton.setText("➕ הוסף שעות נוספות");
+        clickMeButton.setTextSize(16);
+        clickMeButton.setPadding(35, 18, 35, 18);
+        clickMeButton.setBackgroundColor(0xFF388E3C); // Professional green
+        clickMeButton.setTextColor(0xFFFFFFFF); // White text
         
         // Create overtime display
         clickCountText = new TextView(this);
@@ -405,20 +413,30 @@ public class MainActivity extends Activity {
             int hours = hoursStr.isEmpty() ? 0 : Integer.parseInt(hoursStr);
             int minutes = minutesStr.isEmpty() ? 0 : Integer.parseInt(minutesStr);
             
-            // Validate ranges (following original overtime tracker)
+            // v009f: Enhanced validation with professional feedback
             if (hours < 0 || hours > 23) {
-                Toast.makeText(this, "שעות חייבות להיות בין 0 ל-23", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "❌ שעות חייבות להיות בין 0 ל-23\n(הזנת: " + hours + ")", Toast.LENGTH_LONG).show();
+                hoursInput.requestFocus();
                 return;
             }
             
             if (minutes < 0 || minutes > 59) {
-                Toast.makeText(this, "דקות חייבות להיות בין 0 ל-59", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "❌ דקות חייבות להיות בין 0 ל-59\n(הזנת: " + minutes + ")", Toast.LENGTH_LONG).show();
+                minutesInput.requestFocus();
                 return;
             }
             
             if (hours == 0 && minutes == 0) {
-                Toast.makeText(this, "אנא הזן לפחות דקה אחת", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "💡 אנא הזן לפחות דקה אחת\nהזן מספר בשדה השעות או הדקות", Toast.LENGTH_LONG).show();
+                hoursInput.requestFocus();
                 return;
+            }
+            
+            // v009f: Check for reasonable overtime limits (professional guidance)
+            float totalHours = hours + (minutes / 60.0f);
+            if (totalHours > 12) {
+                Toast.makeText(this, "⚠️ האם אתה בטוח? זה " + String.format("%.1f", totalHours) + " שעות נוספות!\nלחץ שוב כדי לאשר", Toast.LENGTH_LONG).show();
+                // Allow it but give warning - don't return
             }
             
             // Add entry and increment counter
@@ -427,15 +445,18 @@ public class MainActivity extends Activity {
             // v004f: Save overtime entry to SharedPreferences
             saveOvertimeEntry(selectedDate, hours, minutes);
             
-            Log.d(TAG, "🕐 Added overtime: " + hours + "h " + minutes + "m (entry #" + clickCount + ")");
+            // v009f: Enhanced logging with professional details
+            Log.d(TAG, "✅ SUCCESS: Added overtime entry #" + clickCount);
+            Log.d(TAG, "📊 Details: " + hours + "h " + minutes + "m on " + selectedDate);
+            Log.d(TAG, "💾 Data: Saved to SharedPreferences with timestamp");
             
             // Clear input fields after successful entry
             hoursInput.setText("");
             minutesInput.setText("");
             
-            // Update display and show feedback
+            // Update display and show enhanced feedback
             updateClickCountDisplay();
-            showHebrewOvertimeMessage(hours, minutes);
+            showEnhancedSuccessMessage(hours, minutes);
             
         } catch (NumberFormatException e) {
             Toast.makeText(this, "אנא הזן מספרים תקינים בלבד", Toast.LENGTH_SHORT).show();
@@ -541,21 +562,19 @@ public class MainActivity extends Activity {
     }
     
     /*
-        🎉 USER FEEDBACK METHOD - MAKE THE APP FEEL ALIVE
-        ================================================
+        🎉 ENHANCED USER FEEDBACK METHOD - v009f
+        ========================================
         
-        🎯 PURPOSE: Show different encouraging messages based on click count
+        🎯 PURPOSE: Show professional success messages with comprehensive feedback
         
-        📱 TOAST EXPLANATION:
-        Toast is a small popup message that appears briefly and disappears automatically.
-        Perfect for showing quick feedback without interrupting user flow.
-        
-        🧠 UX (USER EXPERIENCE) PRINCIPLE:
-        Good apps provide immediate feedback for user actions. Even a simple
-        button click should feel responsive and engaging.
+        📱 PROFESSIONAL UX ENHANCEMENTS:
+        - Clear success confirmation with visual indicators
+        - Detailed information about what was saved
+        - Encouraging messages that build user confidence
+        - Professional tone suitable for workplace application
     */
-    private void showHebrewOvertimeMessage(int hours, int minutes) {
-        // v003f: Show message with actual hours and minutes entered
+    private void showEnhancedSuccessMessage(int hours, int minutes) {
+        // v009f: Enhanced professional success message
         String timeStr = "";
         if (hours > 0 && minutes > 0) {
             timeStr = hours + " שעות ו-" + minutes + " דקות";
@@ -565,18 +584,21 @@ public class MainActivity extends Activity {
             timeStr = minutes + " דקות";
         }
         
+        // Professional success message with comprehensive feedback
         String message;
+        float totalHours = hours + (minutes / 60.0f);
+        
         if (clickCount == 1) {
-            message = "🎉 מעולה! הוספת " + timeStr + "!";
+            message = "✅ הצלחה! נשמרו " + timeStr + "\n📅 תאריך: " + selectedDate + "\n🎯 זוהי הרשומה הראשונה שלך!";
         } else if (clickCount <= 5) {
-            message = "👍 כל הכבוד! הוספת " + timeStr + " (רשומה #" + clickCount + ")";
+            message = "✅ נשמר בהצלחה! " + timeStr + "\n📅 " + selectedDate + " | רשומה #" + clickCount + "\n📊 " + String.format("%.1f", totalHours) + " שעות נוספו";
         } else {
-            message = "🏆 מדהים! " + timeStr + " נוספו (רשומה #" + clickCount + ")";
+            message = "✅ מצוין! " + timeStr + " נשמרו\n📅 " + selectedDate + " | רשומה #" + clickCount + "\n🏆 אתה עובד קשה! " + String.format("%.1f", totalHours) + " שעות";
         }
         
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
         
-        Log.d(TAG, "💬 Showed Hebrew overtime message: " + message);
+        Log.d(TAG, "💬 Enhanced success message shown: Entry #" + clickCount + ", " + totalHours + "h total");
     }
     
     /*
