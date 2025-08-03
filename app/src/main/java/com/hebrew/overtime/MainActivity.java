@@ -35,10 +35,12 @@ package com.hebrew.overtime;
 import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.Calendar;
@@ -102,6 +104,8 @@ public class MainActivity extends Activity {
     private TextView welcomeText;
     private Button clickMeButton;
     private Button datePickerButton;  // v002f: Date picker button
+    private EditText hoursInput;      // v003f: Hours input field
+    private EditText minutesInput;    // v003f: Minutes input field
     private TextView clickCountText;
     
     /*
@@ -182,6 +186,22 @@ public class MainActivity extends Activity {
         datePickerButton.setTextSize(16);
         datePickerButton.setPadding(40, 15, 40, 15);
         
+        // Create hours input field - v003f
+        hoursInput = new EditText(this);
+        hoursInput.setHint("שעות (0-23)");
+        hoursInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        hoursInput.setTextSize(16);
+        hoursInput.setPadding(30, 15, 30, 15);
+        hoursInput.setGravity(android.view.Gravity.CENTER);
+        
+        // Create minutes input field - v003f
+        minutesInput = new EditText(this);
+        minutesInput.setHint("דקות (0-59)");
+        minutesInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        minutesInput.setTextSize(16);
+        minutesInput.setPadding(30, 15, 30, 15);
+        minutesInput.setGravity(android.view.Gravity.CENTER);
+        
         // Create overtime add button
         clickMeButton = new Button(this);
         clickMeButton.setText("הוסף שעות נוספות");
@@ -203,9 +223,11 @@ public class MainActivity extends Activity {
         layout.setGravity(android.view.Gravity.CENTER);
         layout.setPadding(30, 30, 30, 30);
         
-        // Add views to layout - v002f
+        // Add views to layout - v003f
         layout.addView(welcomeText);
         layout.addView(datePickerButton);  // Date picker first
+        layout.addView(hoursInput);        // Hours input
+        layout.addView(minutesInput);      // Minutes input
         layout.addView(clickMeButton);     // Then add overtime button
         layout.addView(clickCountText);
         
@@ -287,24 +309,47 @@ public class MainActivity extends Activity {
         4. Log the event for debugging
     */
     private void handleButtonClick() {
-        // 📈 Increment the click counter
-        clickCount++;
-        
-        Log.d(TAG, "📊 Click count updated to: " + clickCount);
-        
-        // 🔄 Update the UI to show new click count
-        updateClickCountDisplay();
-        
-        // 🎉 Show encouraging toast message to user
-        showEncouragingMessage();
-        
-        // 🏆 Special celebration for milestone clicks
-        if (clickCount == 10) {
-            Log.d(TAG, "🏆 Milestone reached: 10 clicks!");
-            Toast.makeText(this, "🏆 Wow! 10 clicks! You're getting the hang of this!", Toast.LENGTH_LONG).show();
-        } else if (clickCount == 25) {
-            Log.d(TAG, "🏆 Milestone reached: 25 clicks!");
-            Toast.makeText(this, "🚀 25 clicks! You're an Android pro!", Toast.LENGTH_LONG).show();
+        // v003f: Get hours and minutes from input fields
+        try {
+            String hoursStr = hoursInput.getText().toString().trim();
+            String minutesStr = minutesInput.getText().toString().trim();
+            
+            // Default to 0 if empty
+            int hours = hoursStr.isEmpty() ? 0 : Integer.parseInt(hoursStr);
+            int minutes = minutesStr.isEmpty() ? 0 : Integer.parseInt(minutesStr);
+            
+            // Validate ranges (following original overtime tracker)
+            if (hours < 0 || hours > 23) {
+                Toast.makeText(this, "שעות חייבות להיות בין 0 ל-23", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            if (minutes < 0 || minutes > 59) {
+                Toast.makeText(this, "דקות חייבות להיות בין 0 ל-59", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            if (hours == 0 && minutes == 0) {
+                Toast.makeText(this, "אנא הזן לפחות דקה אחת", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // Add entry and increment counter
+            clickCount++;
+            
+            Log.d(TAG, "🕐 Added overtime: " + hours + "h " + minutes + "m (entry #" + clickCount + ")");
+            
+            // Clear input fields after successful entry
+            hoursInput.setText("");
+            minutesInput.setText("");
+            
+            // Update display and show feedback
+            updateClickCountDisplay();
+            showHebrewOvertimeMessage(hours, minutes);
+            
+        } catch (NumberFormatException e) {
+            Toast.makeText(this, "אנא הזן מספרים תקינים בלבד", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Number format error in input fields", e);
         }
     }
     
@@ -362,12 +407,12 @@ public class MainActivity extends Activity {
         - Follows DRY (Don't Repeat Yourself) principle
     */
     private void updateClickCountDisplay() {
-        // v002f: Display overtime with selected date
-        double overtimeHours = clickCount * 0.5;  // Each click = 30 minutes
-        String countMessage = selectedDate + "\nשעות נוספות: " + overtimeHours + "\nרשומות: " + clickCount;
+        // v003f: Display overtime with selected date and entry count
+        // Note: For now showing entry count, actual hour total will come with data persistence
+        String countMessage = selectedDate + "\nרשומות: " + clickCount + "\n(הזן שעות ודקות למעלה)";
         clickCountText.setText(countMessage);
         
-        Log.d(TAG, "🔄 Overtime display updated: " + selectedDate + " - " + overtimeHours + " hours, " + clickCount + " entries");
+        Log.d(TAG, "🔄 Overtime display updated: " + selectedDate + " - " + clickCount + " entries");
     }
     
     /*
@@ -384,24 +429,29 @@ public class MainActivity extends Activity {
         Good apps provide immediate feedback for user actions. Even a simple
         button click should feel responsive and engaging.
     */
-    private void showEncouragingMessage() {
-        String message;
-        
-        // Show Hebrew overtime messages based on entries
-        if (clickCount == 1) {
-            message = "🎉 מעולה! הוספת 30 דקות נוספות!";
-        } else if (clickCount <= 5) {
-            message = "👍 כל הכבוד! " + clickCount + " רשומות";
-        } else if (clickCount <= 15) {
-            message = "🔥 אתה במסלול נכון! " + clickCount + " רשומות!";
-        } else {
-            message = "🏆 מדהים! " + clickCount + " רשומות ועוד!";
+    private void showHebrewOvertimeMessage(int hours, int minutes) {
+        // v003f: Show message with actual hours and minutes entered
+        String timeStr = "";
+        if (hours > 0 && minutes > 0) {
+            timeStr = hours + " שעות ו-" + minutes + " דקות";
+        } else if (hours > 0) {
+            timeStr = hours + " שעות";
+        } else if (minutes > 0) {
+            timeStr = minutes + " דקות";
         }
         
-        // Show the toast message to user
+        String message;
+        if (clickCount == 1) {
+            message = "🎉 מעולה! הוספת " + timeStr + "!";
+        } else if (clickCount <= 5) {
+            message = "👍 כל הכבוד! הוספת " + timeStr + " (רשומה #" + clickCount + ")";
+        } else {
+            message = "🏆 מדהים! " + timeStr + " נוספו (רשומה #" + clickCount + ")";
+        }
+        
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         
-        Log.d(TAG, "💬 Showed toast message: " + message);
+        Log.d(TAG, "💬 Showed Hebrew overtime message: " + message);
     }
     
     /*
