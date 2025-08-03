@@ -105,6 +105,8 @@ public class MainActivity extends Activity {
     private TextView welcomeText;
     private Button clickMeButton;
     private Button datePickerButton;  // v002f: Date picker button
+    private Button prevMonthButton;   // v008f: Previous month navigation
+    private Button nextMonthButton;   // v008f: Next month navigation
     private EditText hoursInput;      // v003f: Hours input field
     private EditText minutesInput;    // v003f: Minutes input field
     private TextView clickCountText;
@@ -131,6 +133,10 @@ public class MainActivity extends Activity {
     private String selectedDate = "2025-08-03";  // Today's date (default)
     private int clickCount = 0;
     private SharedPreferences sharedPreferences;  // v004f: Data persistence
+    
+    // v008f: Current viewing month for navigation
+    private int currentViewYear = 2025;
+    private int currentViewMonth = 7; // August 2025 (0-based)
     
     // v007f: Israeli holidays for 2025 (comprehensive list)
     private final java.util.Map<String, String> israeliHolidays2025 = new java.util.HashMap<String, String>() {{
@@ -225,6 +231,17 @@ public class MainActivity extends Activity {
         datePickerButton.setTextSize(16);
         datePickerButton.setPadding(40, 15, 40, 15);
         
+        // Create month navigation buttons - v008f
+        prevMonthButton = new Button(this);
+        prevMonthButton.setText("← חודש קודם");
+        prevMonthButton.setTextSize(14);
+        prevMonthButton.setPadding(30, 10, 30, 10);
+        
+        nextMonthButton = new Button(this);
+        nextMonthButton.setText("חודש הבא →");
+        nextMonthButton.setTextSize(14);
+        nextMonthButton.setPadding(30, 10, 30, 10);
+        
         // Create hours input field - v003f
         hoursInput = new EditText(this);
         hoursInput.setHint("שעות (0-23)");
@@ -269,9 +286,17 @@ public class MainActivity extends Activity {
         layout.setGravity(android.view.Gravity.CENTER);
         layout.setPadding(30, 30, 30, 30);
         
-        // Add views to layout - v005f
+        // Create horizontal layout for navigation buttons - v008f
+        android.widget.LinearLayout navigationLayout = new android.widget.LinearLayout(this);
+        navigationLayout.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        navigationLayout.setGravity(android.view.Gravity.CENTER);
+        navigationLayout.addView(prevMonthButton);
+        navigationLayout.addView(nextMonthButton);
+        
+        // Add views to layout - v008f
         layout.addView(welcomeText);
-        layout.addView(datePickerButton);  // Date picker first
+        layout.addView(navigationLayout);  // Month navigation buttons
+        layout.addView(datePickerButton);  // Date picker
         layout.addView(hoursInput);        // Hours input
         layout.addView(minutesInput);      // Minutes input
         layout.addView(clickMeButton);     // Then add overtime button
@@ -312,6 +337,21 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 showDatePicker();
+            }
+        });
+        
+        // Month navigation button listeners - v008f
+        prevMonthButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                navigateToPreviousMonth();
+            }
+        });
+        
+        nextMonthButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                navigateToNextMonth();
             }
         });
         
@@ -457,24 +497,21 @@ public class MainActivity extends Activity {
         - Follows DRY (Don't Repeat Yourself) principle
     */
     private void updateClickCountDisplay() {
-        // v006f: Display monthly statistics and summary calculations
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.set(2025, 7, 3); // August 2025 (month is 0-based)
-        
-        // Calculate monthly statistics
-        int workDays = calculateWorkDaysInMonth(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH));
+        // v008f: Display monthly statistics for current viewing month
+        // Calculate monthly statistics for the selected viewing month
+        int workDays = calculateWorkDaysInMonth(currentViewYear, currentViewMonth);
         float requiredHours = workDays * 1.0f; // 1 hour per work day
-        float actualHours = calculateActualHoursForMonth(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH));
+        float actualHours = calculateActualHoursForMonth(currentViewYear, currentViewMonth);
         float balance = actualHours - requiredHours;
         float completionPercentage = requiredHours > 0 ? (actualHours / requiredHours) * 100 : 0;
         
         // v007f: Get holiday information for this month
-        int holidaysInMonth = countHolidaysInMonth(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH));
+        int holidaysInMonth = countHolidaysInMonth(currentViewYear, currentViewMonth);
         
         // Format monthly summary in Hebrew with Israeli calendar awareness
-        String monthName = getHebrewMonthName(cal.get(java.util.Calendar.MONTH));
+        String monthName = getHebrewMonthName(currentViewMonth);
         StringBuilder summaryBuilder = new StringBuilder();
-        summaryBuilder.append("📊 ").append(monthName).append(" ").append(cal.get(java.util.Calendar.YEAR)).append("\n");
+        summaryBuilder.append("📊 ").append(monthName).append(" ").append(currentViewYear).append("\n");
         summaryBuilder.append("ימי עבודה: ").append(workDays);
         if (holidaysInMonth > 0) {
             summaryBuilder.append(" (חגים: ").append(holidaysInMonth).append(")");
@@ -757,6 +794,43 @@ public class MainActivity extends Activity {
         }
         
         return holidays;
+    }
+    
+    /*
+        🗓️ MONTH NAVIGATION METHODS - v008f
+        ===================================
+        
+        🎯 PURPOSE: Allow users to navigate between months
+        
+        These methods implement month-to-month navigation functionality,
+        similar to the original overtime tracker dashboard navigation.
+        Updates all displays when month changes.
+    */
+    
+    private void navigateToPreviousMonth() {
+        currentViewMonth--;
+        if (currentViewMonth < 0) {
+            currentViewMonth = 11; // December
+            currentViewYear--;
+        }
+        
+        // Update all displays for new month
+        updateClickCountDisplay();
+        
+        Log.d(TAG, "🗓️ Navigated to previous month: " + currentViewYear + "/" + (currentViewMonth + 1));
+    }
+    
+    private void navigateToNextMonth() {
+        currentViewMonth++;
+        if (currentViewMonth > 11) {
+            currentViewMonth = 0; // January
+            currentViewYear++;
+        }
+        
+        // Update all displays for new month
+        updateClickCountDisplay();
+        
+        Log.d(TAG, "🗓️ Navigated to next month: " + currentViewYear + "/" + (currentViewMonth + 1));
     }
     
     /*
