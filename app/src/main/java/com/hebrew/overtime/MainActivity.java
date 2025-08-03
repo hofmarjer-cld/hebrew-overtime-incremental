@@ -33,12 +33,15 @@ package com.hebrew.overtime;
 
 // 📦 IMPORTS - The Tools We Need
 import android.app.Activity;
+import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.DatePicker;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.util.Calendar;
 
 /*
     🔍 IMPORT EXPLANATION:
@@ -98,23 +101,23 @@ public class MainActivity extends Activity {
     */
     private TextView welcomeText;
     private Button clickMeButton;
+    private Button datePickerButton;  // v002f: Date picker button
     private TextView clickCountText;
     
     /*
-        📊 APP STATE VARIABLES
-        =====================
+        📊 APP STATE VARIABLES - v002f
+        ==============================
         
-        🎯 PURPOSE: Track what's happening in your app
-        📱 EXAMPLES:
-        - clickCount: How many times user clicked the button
-        - userPoints: Points in a game
-        - isLoggedIn: Whether user is authenticated
-        - currentLevel: Level in a game
+        🎯 PURPOSE: Track overtime data with date selection
+        📱 OVERTIME TRACKING:
+        - selectedDate: Date for overtime entry (YYYY-MM-DD format)
+        - clickCount: Number of overtime entries (each = 30 minutes)
         
         💾 LIFECYCLE CONSIDERATION:
         These variables get reset when Android destroys/recreates your Activity.
         For persistent data, you'd use SharedPreferences, databases, or files.
     */
+    private String selectedDate = "2025-08-03";  // Today's date (default)
     private int clickCount = 0;
     
     /*
@@ -173,13 +176,19 @@ public class MainActivity extends Activity {
         welcomeText.setPadding(50, 50, 50, 30);
         welcomeText.setGravity(android.view.Gravity.CENTER);
         
-        // Create interactive button
+        // Create date picker button - v002f
+        datePickerButton = new Button(this);
+        datePickerButton.setText("בחר תאריך: " + selectedDate);
+        datePickerButton.setTextSize(16);
+        datePickerButton.setPadding(40, 15, 40, 15);
+        
+        // Create overtime add button
         clickMeButton = new Button(this);
         clickMeButton.setText("הוסף שעות נוספות");
         clickMeButton.setTextSize(18);
         clickMeButton.setPadding(40, 20, 40, 20);
         
-        // Create click counter display
+        // Create overtime display
         clickCountText = new TextView(this);
         clickCountText.setTextSize(16);
         clickCountText.setPadding(50, 20, 50, 50);
@@ -194,9 +203,10 @@ public class MainActivity extends Activity {
         layout.setGravity(android.view.Gravity.CENTER);
         layout.setPadding(30, 30, 30, 30);
         
-        // Add views to layout
+        // Add views to layout - v002f
         layout.addView(welcomeText);
-        layout.addView(clickMeButton);
+        layout.addView(datePickerButton);  // Date picker first
+        layout.addView(clickMeButton);     // Then add overtime button
         layout.addView(clickCountText);
         
         // Set the layout as our content view
@@ -227,6 +237,16 @@ public class MainActivity extends Activity {
             Modern Java allows: clickMeButton.setOnClickListener(v -> handleButtonClick());
             But explicit OnClickListener is clearer for learning.
         */
+        
+        // Date picker button click listener - v002f
+        datePickerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDatePicker();
+            }
+        });
+        
+        // Overtime add button click listener
         clickMeButton.setOnClickListener(new View.OnClickListener() {
             /*
                 🎯 onClick() - BUTTON CLICK HANDLER
@@ -289,6 +309,47 @@ public class MainActivity extends Activity {
     }
     
     /*
+        📅 DATE PICKER METHOD - v002f
+        =============================
+        
+        🎯 PURPOSE: Show standard Android date picker dialog
+        
+        🧠 HOW IT WORKS:
+        - Gets current calendar instance
+        - Creates DatePickerDialog with Hebrew context
+        - Updates selectedDate when user picks date
+        - Updates button text and display
+    */
+    private void showDatePicker() {
+        Calendar calendar = Calendar.getInstance();
+        
+        DatePickerDialog datePickerDialog = new DatePickerDialog(
+            this,
+            new DatePickerDialog.OnDateSetListener() {
+                @Override
+                public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
+                    // Format as YYYY-MM-DD (month is 0-based, so add 1)
+                    selectedDate = String.format("%04d-%02d-%02d", year, month + 1, dayOfMonth);
+                    
+                    // Update button text with new date
+                    datePickerButton.setText("בחר תאריך: " + selectedDate);
+                    
+                    // Update overtime display
+                    updateClickCountDisplay();
+                    
+                    Log.d(TAG, "📅 Date selected: " + selectedDate);
+                }
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        );
+        
+        datePickerDialog.show();
+        Log.d(TAG, "📅 Date picker dialog shown");
+    }
+    
+    /*
         🔄 UI UPDATE METHOD - KEEP DISPLAY IN SYNC
         ==========================================
         
@@ -301,12 +362,12 @@ public class MainActivity extends Activity {
         - Follows DRY (Don't Repeat Yourself) principle
     */
     private void updateClickCountDisplay() {
-        // v001f: Simple overtime display (30 minutes per click)
+        // v002f: Display overtime with selected date
         double overtimeHours = clickCount * 0.5;  // Each click = 30 minutes
-        String countMessage = "שעות נוספות: " + overtimeHours + "\nרשומות: " + clickCount;
+        String countMessage = selectedDate + "\nשעות נוספות: " + overtimeHours + "\nרשומות: " + clickCount;
         clickCountText.setText(countMessage);
         
-        Log.d(TAG, "🔄 Overtime display updated: " + overtimeHours + " hours, " + clickCount + " entries");
+        Log.d(TAG, "🔄 Overtime display updated: " + selectedDate + " - " + overtimeHours + " hours, " + clickCount + " entries");
     }
     
     /*
