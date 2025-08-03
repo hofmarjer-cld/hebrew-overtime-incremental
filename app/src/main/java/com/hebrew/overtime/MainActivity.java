@@ -108,6 +108,7 @@ public class MainActivity extends Activity {
     private EditText hoursInput;      // v003f: Hours input field
     private EditText minutesInput;    // v003f: Minutes input field
     private TextView clickCountText;
+    private TextView historyText;     // v005f: History display
     
     /*
         📊 APP STATE VARIABLES - v004f (DATA PERSISTENCE)
@@ -220,8 +221,15 @@ public class MainActivity extends Activity {
         // Create overtime display
         clickCountText = new TextView(this);
         clickCountText.setTextSize(16);
-        clickCountText.setPadding(50, 20, 50, 50);
+        clickCountText.setPadding(50, 20, 50, 20);
         clickCountText.setGravity(android.view.Gravity.CENTER);
+        
+        // Create history display - v005f
+        historyText = new TextView(this);
+        historyText.setTextSize(14);
+        historyText.setPadding(50, 10, 50, 50);
+        historyText.setGravity(android.view.Gravity.CENTER);
+        historyText.setBackgroundColor(0xFFF5F5F5); // Light gray background
         
         // Set initial click count display
         updateClickCountDisplay();
@@ -232,13 +240,14 @@ public class MainActivity extends Activity {
         layout.setGravity(android.view.Gravity.CENTER);
         layout.setPadding(30, 30, 30, 30);
         
-        // Add views to layout - v003f
+        // Add views to layout - v005f
         layout.addView(welcomeText);
         layout.addView(datePickerButton);  // Date picker first
         layout.addView(hoursInput);        // Hours input
         layout.addView(minutesInput);      // Minutes input
         layout.addView(clickMeButton);     // Then add overtime button
-        layout.addView(clickCountText);
+        layout.addView(clickCountText);    // Overview statistics
+        layout.addView(historyText);       // History for selected date
         
         // Set the layout as our content view
         setContentView(layout);
@@ -419,10 +428,12 @@ public class MainActivity extends Activity {
         - Follows DRY (Don't Repeat Yourself) principle
     */
     private void updateClickCountDisplay() {
-        // v003f: Display overtime with selected date and entry count
-        // Note: For now showing entry count, actual hour total will come with data persistence
-        String countMessage = selectedDate + "\nרשומות: " + clickCount + "\n(הזן שעות ודקות למעלה)";
+        // v005f: Display overtime with selected date and entry count
+        String countMessage = selectedDate + "\nסה\"כ רשומות: " + clickCount + "\n(הזן שעות ודקות למעלה)";
         clickCountText.setText(countMessage);
+        
+        // v005f: Update history display for selected date
+        updateHistoryDisplay();
         
         Log.d(TAG, "🔄 Overtime display updated: " + selectedDate + " - " + clickCount + " entries");
     }
@@ -502,6 +513,69 @@ public class MainActivity extends Activity {
         editor.apply();
         
         Log.d(TAG, "💾 Saved overtime entry: " + entryKey + " = " + entryData);
+    }
+    
+    /*
+        📊 HISTORY DISPLAY METHOD - v005f
+        =================================
+        
+        🎯 PURPOSE: Show overtime entries for the selected date
+        
+        🧠 HOW IT WORKS:
+        - Searches SharedPreferences for entries matching selected date
+        - Formats entries as readable Hebrew text
+        - Shows hours, minutes, and entry time
+        - Provides visual feedback that data persistence is working
+        
+        📱 DISPLAY FORMAT:
+        "תאריך: YYYY-MM-DD
+         רשומה 1: Xh Ym
+         רשומה 2: Xh Ym
+         (אם אין רשומות - הודעה מתאימה)"
+    */
+    private void updateHistoryDisplay() {
+        // Get all SharedPreferences keys
+        java.util.Map<String, ?> allEntries = sharedPreferences.getAll();
+        java.util.List<String> dateEntries = new java.util.ArrayList<>();
+        
+        // Find entries for selected date
+        for (java.util.Map.Entry<String, ?> entry : allEntries.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith("entry_" + selectedDate + "_")) {
+                String value = (String) entry.getValue();
+                dateEntries.add(value);
+            }
+        }
+        
+        // Build history display text
+        StringBuilder historyBuilder = new StringBuilder();
+        historyBuilder.append("📅 תאריך: ").append(selectedDate).append("\n");
+        
+        if (dateEntries.isEmpty()) {
+            historyBuilder.append("אין רשומות לתאריך זה");
+        } else {
+            historyBuilder.append("רשומות לתאריך:\n");
+            for (int i = 0; i < dateEntries.size(); i++) {
+                String entryData = dateEntries.get(i);
+                String[] parts = entryData.split(":");
+                if (parts.length >= 2) {
+                    int hours = Integer.parseInt(parts[0]);
+                    int minutes = Integer.parseInt(parts[1]);
+                    historyBuilder.append("• ");
+                    if (hours > 0 && minutes > 0) {
+                        historyBuilder.append(hours).append(" שעות ו-").append(minutes).append(" דקות");
+                    } else if (hours > 0) {
+                        historyBuilder.append(hours).append(" שעות");
+                    } else if (minutes > 0) {
+                        historyBuilder.append(minutes).append(" דקות");
+                    }
+                    historyBuilder.append("\n");
+                }
+            }
+        }
+        
+        historyText.setText(historyBuilder.toString());
+        Log.d(TAG, "📊 Updated history display for " + selectedDate + " - " + dateEntries.size() + " entries");
     }
     
     /*
