@@ -301,10 +301,12 @@ public class MainActivity extends Activity {
         - Follows DRY (Don't Repeat Yourself) principle
     */
     private void updateClickCountDisplay() {
-        String countMessage = "Button clicked " + clickCount + " times";
+        // v001f: Simple overtime display (30 minutes per click)
+        double overtimeHours = clickCount * 0.5;  // Each click = 30 minutes
+        String countMessage = "שעות נוספות: " + overtimeHours + "\nרשומות: " + clickCount;
         clickCountText.setText(countMessage);
         
-        Log.d(TAG, "🔄 UI updated: " + countMessage);
+        Log.d(TAG, "🔄 Overtime display updated: " + overtimeHours + " hours, " + clickCount + " entries");
     }
     
     /*
@@ -324,15 +326,15 @@ public class MainActivity extends Activity {
     private void showEncouragingMessage() {
         String message;
         
-        // Show different messages based on how many times they've clicked
+        // Show Hebrew overtime messages based on entries
         if (clickCount == 1) {
-            message = "🎉 Great! You clicked the button!";
+            message = "🎉 מעולה! הוספת 30 דקות נוספות!";
         } else if (clickCount <= 5) {
-            message = "👍 Keep clicking! (" + clickCount + " clicks)";
+            message = "👍 כל הכבוד! " + clickCount + " רשומות";
         } else if (clickCount <= 15) {
-            message = "🔥 You're on fire! " + clickCount + " clicks!";
+            message = "🔥 אתה במסלול נכון! " + clickCount + " רשומות!";
         } else {
-            message = "🏆 Amazing! " + clickCount + " clicks and counting!";
+            message = "🏆 מדהים! " + clickCount + " רשומות ועוד!";
         }
         
         // Show the toast message to user
